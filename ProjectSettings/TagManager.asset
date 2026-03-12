@@ -15,7 +15,7 @@ TagManager:
   - Ground
   - Enemy
   - PostProcess
-  - 
+  - Player
   - 
   - 
   - 
@@ -45,8 +45,14 @@ TagManager:
   - name: UI
     uniqueID: 3614170285
     locked: 0
+  - name: Player
+    uniqueID: 1116981413
+    locked: 0
   - name: Ground
     uniqueID: 1288925821
+    locked: 0
+  - name: Tree
+    uniqueID: 2002396457
     locked: 0
   - name: Default
     uniqueID: 0

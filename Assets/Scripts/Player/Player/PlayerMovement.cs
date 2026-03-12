@@ -61,15 +61,23 @@ public class PlayerMovement : MonoBehaviour
 
         if (value.isPressed && isGrounded && !isDashing)
         {
+            isGrounded = false;
+            
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, jumpForce, rb.linearVelocity.z);
-            animator.SetTrigger(CharacterAnimations.StartJump);
+            
             animator.SetBool(CharacterAnimations.IsJumping, true);
+            animator.SetTrigger(CharacterAnimations.StartJump);
         }
     }
 
     public void SetAttacking(bool value)
     {
         isAttacking = value;
+    }
+    
+    public void OnAttackEnd()
+    {
+        isAttacking = false;
     }
     
     private void OnAttack(InputValue value)
@@ -110,11 +118,48 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    private void OnDie(InputValue value)
+    {
+        if (!value.isPressed) return;
+        
+        if (isDead)
+            Resurrect();
+        else
+            Die();
+    }
+    
+    private void Resurrect()
+    {
+        isDead = false;
+    
+        animator.SetBool(CharacterAnimations.Die, false);
+        animator.SetBool(CharacterAnimations.IsJumping, false);
+        animator.SetFloat(CharacterAnimations.Speed, 0f);
+    
+        isGrounded = Physics.CheckSphere(groundCheckPoint.position, groundDistance, groundMask);
+        isAttacking = false;
+        isDashing = false;
+        dashTimer = 0f;
+        moveInput = Vector2.zero;
+    
+        rb.linearVelocity = Vector3.zero;
+    }
+
     private void FixedUpdate()
     {
+        bool wasGroundedLastFrame = isGrounded;
+        
         isGrounded = Physics.CheckSphere(groundCheckPoint.position, groundDistance, groundMask);
 
-        if (isGrounded && !wasGrounded)
+        if (isGrounded && !wasGroundedLastFrame)
+        {
+            animator.SetBool(CharacterAnimations.IsJumping, false);
+            
+            if (rb.linearVelocity.y < 0)
+                rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+        }
+        
+        if (isGrounded && animator.GetBool(CharacterAnimations.IsJumping))
         {
             animator.SetBool(CharacterAnimations.IsJumping, false);
         }
@@ -159,7 +204,8 @@ public class PlayerMovement : MonoBehaviour
 
         if (animator != null)
         {
-            animator.SetTrigger(CharacterAnimations.Die);
+            animator.SetBool(CharacterAnimations.Die, isDead);
+            animator.SetTrigger(CharacterAnimations.StartDie);
         }
     }
 }
