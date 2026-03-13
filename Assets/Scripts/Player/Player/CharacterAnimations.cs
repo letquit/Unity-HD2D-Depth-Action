@@ -9,4 +9,7 @@ public class CharacterAnimations
     public static readonly int StartDie = Animator.StringToHash("StartDie");
     public static readonly int Attack = Animator.StringToHash("Attack");
     public static readonly int Dash = Animator.StringToHash("Dash");
+
+    public static readonly int StartCharge = Animator.StringToHash("StartCharge");
+    public static readonly int ChargeAttack = Animator.StringToHash("ChargeAttack");
 }
