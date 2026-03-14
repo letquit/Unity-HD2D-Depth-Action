@@ -14,4 +14,19 @@ public class PlayerAttackEnd : MonoBehaviour
     {
         playerMovement.OnAttackEnd();
     }
+
+    public void OnBlockEnd()
+    {
+        playerMovement.OnBlockEnd();
+    }
+    
+    public void OnBlockResultEnd()
+    {
+        playerMovement.OnBlockResultEnd();
+    }
+
+    public void OnBlockSuccessEnd()
+    {
+        playerMovement.OnBlockSuccessEnd();
+    }
 }

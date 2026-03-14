@@ -1,5 +1,5 @@
 ﻿public class PlayerData
 {
-    public int HP;
-    public int maxHP;
+    public float HP;
+    public float maxHP;
 }

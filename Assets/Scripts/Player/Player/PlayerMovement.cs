@@ -29,6 +29,18 @@ public class PlayerMovement : MonoBehaviour
     public bool logChargeLevel = true;
     public float chargeMoveSpeedMultiplier = 0.3f;
 
+    [Header("Block & Hit")]
+    public float playerMaxHp = 100f;
+    public float blockMoveSpeedMultiplier = 0.3f;
+    public float enemyAttackInterval = 10f; // Test
+    public TextMeshProUGUI enemyAttackText; // Test
+    public TextMeshProUGUI blockResultText; // Test
+    public float perfectBlockWindow = 0.2f;
+    public float blockFailureKnockback = 2f;
+    public float hitKnockback = 4f;
+    public float knockbackForce = 10f;
+    public PlayerData playerData;
+
     private PlayerInput playerInput;
     private Rigidbody rb;
     private Vector2 moveInput;
@@ -51,8 +63,16 @@ public class PlayerMovement : MonoBehaviour
     private float chargeTimer = 0f;
     private int lastChargeLevel = -1;
     private bool isAutoReleased = false; 
-    
     private bool hasEnteredChargeAnim = false;
+    
+    private bool isBlocking = false;
+    private float blockStartTime = 0f;
+    private bool isBeingHit = false;
+    private Vector3 knockbackDirection = Vector3.zero;
+    private float knockbackTimer = 0f;
+    private float knockbackDuration = 0.3f;
+    
+    private float nextEnemyAttackTime = 0f; // Test
 
     private InputAction attackAction;
     private InputAction blockAction;
@@ -77,11 +97,20 @@ public class PlayerMovement : MonoBehaviour
         chargeBarFrame.SetActive(false);
         chargeBar.gameObject.SetActive(false);
 
+        playerData = new PlayerData();
+        playerData.maxHP = playerMaxHp;
+        playerData.HP = playerData.maxHP;
+        
         attackAction = playerInput.actions["Attack"];
         blockAction = playerInput.actions["Block"]; 
         
         attackAction.started += OnAttackStarted;
         attackAction.canceled += OnAttackCanceled;
+        
+        //Testing enemy attack timer
+        nextEnemyAttackTime = Time.time + enemyAttackInterval;
+        UpdateEnemyAttackTimerDisplay();
+        blockResultText.text = "";
     }
 
     private void OnDestroy()
@@ -97,6 +126,10 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isDead) return;
 
+        // Test
+        UpdateEnemyAttackTimerDisplay();
+        CheckEnemyAttack();
+        
         if (isCharging)
         {
             chargeTimer += Time.deltaTime;
@@ -160,6 +193,154 @@ public class PlayerMovement : MonoBehaviour
             if (logChargeTime)
                 Debug.Log($"Charge Time: {chargeTimer:0.000}s");
         }
+        
+        HandleBlockInput();
+    }
+    
+    private void HandleBlockInput()
+    {
+        if (isDead || isAttacking || isCharging || isDashing || isBeingHit) return;
+        
+        if (blockAction != null)
+        {
+            if (blockAction.IsPressed() && !isBlocking)
+            {
+                StartBlocking();
+            }
+            else if (!blockAction.IsPressed() && isBlocking)
+            {
+                StopBlocking();
+            }
+        }
+    }
+
+    private void StartBlocking()
+    {
+        isBlocking = true;
+        blockStartTime = Time.time;
+        
+        animator.SetBool(CharacterAnimations.IsBlocking, true);
+        
+        animator.SetTrigger(CharacterAnimations.StartBlock);
+        
+        blockResultText.text = "开始格挡";
+    }
+
+    private void StopBlocking()
+    {
+        isBlocking = false;
+        
+        animator.SetBool(CharacterAnimations.IsBlocking, false);
+        animator.SetFloat(CharacterAnimations.Speed, 0f);
+        moveInput = Vector2.zero;
+        
+        blockResultText.text = "";
+    }
+
+    // Test
+    private void CheckEnemyAttack()
+    {
+        if (Time.time >= nextEnemyAttackTime && !isDead)
+        {
+            nextEnemyAttackTime = Time.time + enemyAttackInterval;
+            
+            ProcessEnemyAttack();
+        }
+    }
+    
+    private void UpdateEnemyAttackTimerDisplay()
+    {
+        if (enemyAttackText == null) return;
+    
+        float timeUntilAttack = nextEnemyAttackTime - Time.time;
+        float displayTime = Mathf.Max(0f, timeUntilAttack);
+        enemyAttackText.text = displayTime.ToString("F2");
+    
+        if (displayTime > 3f)
+            enemyAttackText.color = Color.white;
+        else if (displayTime > 2f)
+            enemyAttackText.color = Color.green;
+        else if (displayTime > perfectBlockWindow)
+            enemyAttackText.color = Color.yellow;
+        else
+            enemyAttackText.color = Color.red;
+    }
+    
+    private void ProcessEnemyAttack()
+    {
+        if (isBlocking)
+        {
+            float timeSinceBlockStart = Time.time - blockStartTime;
+            
+            if (timeSinceBlockStart <= perfectBlockWindow)
+            {
+                Debug.Log("PERFECT BLOCK");
+                animator.SetTrigger(CharacterAnimations.BlockSuccess);
+                blockResultText.text = "完美格挡";
+            }
+            else
+            {
+                Debug.Log("Block Failed");
+                animator.SetTrigger(CharacterAnimations.BlockFailure);
+                TakeDamage(10, blockFailureKnockback);
+            }
+        }
+        else
+        {
+            int damage = 10;
+            playerData.HP -= damage;
+            
+            if (playerData.HP <= 0)
+            {
+                playerData.HP = 0;
+                Die();
+                return;
+            }
+            
+            if (isCharging)
+            {
+                isCharging = false;
+                hasEnteredChargeAnim = false;
+                
+                if (chargeBar != null)
+                {
+                    chargeBarFrame.SetActive(false);
+                    chargeBar.gameObject.SetActive(false);
+                    isChargeBarVisible = false;
+                }
+            }
+        
+            animator.SetTrigger(CharacterAnimations.Hit);
+        
+            isBeingHit = true;
+            knockbackTimer = knockbackDuration;
+        
+            float rotationY = spriteTransform.rotation.eulerAngles.y;
+            bool isFacingLeft = rotationY > 90f && rotationY < 270f;
+            knockbackDirection = (isFacingLeft ? Vector3.right : Vector3.left) * hitKnockback;
+        }
+    }
+
+    private void TakeDamage(int damage, float knockbackDistance)
+    {
+        playerData.HP -= damage;
+        Debug.Log($"HP: {playerData.HP}/{playerData.maxHP}");
+        
+        if (playerData.HP <= 0)
+        {
+            playerData.HP = 0;
+            Die();
+            return;
+        }
+        
+        isBeingHit = true;
+        knockbackTimer = knockbackDuration;
+        
+        float rotationY = spriteTransform.rotation.eulerAngles.y;
+        bool isFacingLeft = rotationY > 90f && rotationY < 270f;
+    
+        knockbackDirection = isFacingLeft ? Vector3.right : Vector3.left;
+        knockbackDirection *= knockbackDistance;
     }
 
     public ChargeLevel GetChargeLevel(float time)
@@ -309,7 +490,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnMove(InputValue value)
     {
-        if (isDead) return;
+        if (isDead || isBeingHit) return;
 
         moveInput = value.Get<Vector2>();
 
@@ -318,6 +499,15 @@ public class PlayerMovement : MonoBehaviour
         if (moveInput.magnitude > 0.01f)
         {
             lastMoveDirection = moveInput;
+        }
+        
+        if (isBlocking)
+        {
+            if (spriteTransform != null && moveInput.x != 0)
+            {
+                spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
+            }
+            return;
         }
         
         if (isCharging)
@@ -337,8 +527,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnJump(InputValue value)
     {
-        if (isDead || isAttacking) return;
-        if (isCharging) return;
+        if (isDead || isAttacking || isBlocking || isCharging) return;
 
         if (value.isPressed && isGrounded && !isDashing)
         {
@@ -371,11 +560,57 @@ public class PlayerMovement : MonoBehaviour
             chargeBar.fillAmount = 0f;
         }
     }
+    
+    public void OnBlockEnd()
+    {
+        if (isDead) return;
+        
+        if (isBlocking && blockAction != null && blockAction.IsPressed())
+        {
+            Debug.Log("Continue Blocking");
+        }
+        else
+        {
+            StopBlocking();
+        }
+    }
+
+    public void OnBlockResultEnd()
+    {
+        if (isDead) return;
+        
+        isBeingHit = false;
+        knockbackTimer = 0f;
+        rb.linearVelocity = Vector3.zero;
+        
+        if (isBlocking)
+        {
+            StopBlocking();
+        }
+    }
+    
+    public void OnBlockSuccessEnd()
+    {
+        if (isDead) return;
+        
+        bool isBlockKeyPressed = blockAction != null && blockAction.IsPressed();
+        
+        if (isBlockKeyPressed && !isDead && !isAttacking && !isCharging && !isDashing && !isBeingHit)
+        {
+            animator.SetTrigger(CharacterAnimations.StartBlock);
+        }
+        else
+        {
+            if (isBlocking)
+            {
+                StopBlocking();
+            }
+        }
+    }
 
     private void OnDash(InputValue value)
     {
-        if (isDead || isAttacking) return;
-        if (isCharging) return;
+        if (isDead || isAttacking || isBlocking || isCharging) return;
         if (dashCooldownTimer > 0f) return;
 
         if (value.isPressed && !isDashing)
@@ -403,6 +638,7 @@ public class PlayerMovement : MonoBehaviour
     private void Resurrect()
     {
         isDead = false;
+        playerData.HP = playerData.maxHP;
 
         animator.SetBool(CharacterAnimations.Die, false);
         animator.SetBool(CharacterAnimations.IsJumping, false);
@@ -410,16 +646,17 @@ public class PlayerMovement : MonoBehaviour
 
         isGrounded = Physics.CheckSphere(groundCheckPoint.position, groundDistance, groundMask);
         isAttacking = false;
+        isBlocking = false;
         isDashing = false;
+        isBeingHit = false;
         dashTimer = 0f;
         moveInput = Vector2.zero;
-
         isCharging = false;
         chargeTimer = 0f;
         hasEnteredChargeAnim = false;
         lastChargeLevel = -1;
-        lastMoveDirection = Vector2.right;
         isAutoReleased = false;
+        knockbackTimer = 0f;
         
         isChargeBarVisible = false;
         if (chargeBar != null)
@@ -430,6 +667,8 @@ public class PlayerMovement : MonoBehaviour
         }
 
         rb.linearVelocity = Vector3.zero;
+        
+        nextEnemyAttackTime = Time.time + enemyAttackInterval;
     }
 
     private void FixedUpdate()
@@ -456,12 +695,39 @@ public class PlayerMovement : MonoBehaviour
 
         if (!isDead)
         {
+            if (isBeingHit && knockbackTimer > 0)
+            {
+                rb.linearVelocity = new Vector3(
+                    knockbackDirection.x * knockbackForce,
+                    rb.linearVelocity.y,
+                    knockbackDirection.z * knockbackForce
+                );
+                knockbackTimer -= Time.fixedDeltaTime;
+                
+                if (knockbackTimer <= 0)
+                {
+                    isBeingHit = false;
+                    rb.linearVelocity = Vector3.zero;
+                }
+                return;
+            }
+            
             if (isCharging && chargeTimer >= 0.1f && chargeTimer < 0.5f)
             {
                 rb.linearVelocity = new Vector3(
                     moveInput.x * moveSpeed * chargeMoveSpeedMultiplier, 
                     rb.linearVelocity.y, 
                     moveInput.y * moveSpeed * chargeMoveSpeedMultiplier
+                );
+                return;
+            }
+            
+            if (isBlocking)
+            {
+                rb.linearVelocity = new Vector3(
+                    moveInput.x * moveSpeed * blockMoveSpeedMultiplier, 
+                    rb.linearVelocity.y, 
+                    moveInput.y * moveSpeed * blockMoveSpeedMultiplier
                 );
                 return;
             }
@@ -498,10 +764,13 @@ public class PlayerMovement : MonoBehaviour
         rb.linearVelocity = Vector3.zero;
 
         isCharging = false;
+        isBlocking = false;
+        isBeingHit = false;
         chargeTimer = 0f;
         hasEnteredChargeAnim = false;
         lastChargeLevel = -1;
         isAutoReleased = false;
+        knockbackTimer = 0f;
 
         isChargeBarVisible = false;
         if (chargeBar != null)
@@ -511,9 +780,14 @@ public class PlayerMovement : MonoBehaviour
             chargeBar.fillAmount = 0f;
         }
         
+        
         if (animator != null)
         {
-            animator.SetBool(CharacterAnimations.Die, isDead);
+            animator.SetBool(CharacterAnimations.IsBlocking, false);
+            animator.SetBool(CharacterAnimations.IsJumping, false);
+            animator.SetFloat(CharacterAnimations.Speed, 0f);
+        
+            animator.SetBool(CharacterAnimations.Die, true);
             animator.SetTrigger(CharacterAnimations.StartDie);
         }
     }

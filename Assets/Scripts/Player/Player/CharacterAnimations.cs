@@ -12,4 +12,10 @@ public class CharacterAnimations
 
     public static readonly int StartCharge = Animator.StringToHash("StartCharge");
     public static readonly int ChargeAttack = Animator.StringToHash("ChargeAttack");
+    
+    public static readonly int StartBlock = Animator.StringToHash("StartBlock");
+    public static readonly int BlockSuccess = Animator.StringToHash("BlockSuccess");
+    public static readonly int BlockFailure = Animator.StringToHash("BlockFailure");
+    public static readonly int Hit = Animator.StringToHash("Hit");
+    public static readonly int IsBlocking = Animator.StringToHash("IsBlocking");
 }
