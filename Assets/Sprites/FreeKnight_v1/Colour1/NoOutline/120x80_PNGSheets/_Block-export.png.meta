@@ -1,10 +1,7 @@
 fileFormatVersion: 2
-guid: 7943007a78203e844ac04c4c9d091d85
+guid: a984b5e03783a8b47af0595e01f6a15f
 TextureImporter:
-  internalIDToNameTable:
-  - first:
-      213: 4237140444910105288
-    second: _Hit_0
+  internalIDToNameTable: []
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -42,7 +39,7 @@ TextureImporter:
     mipBias: 0
     wrapU: 1
     wrapV: 1
-    wrapW: 1
+    wrapW: 0
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
@@ -100,23 +97,89 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: _Hit_0
+      name: _Block-export_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 32
         y: 0
-        width: 120
-        height: 80
+        width: 34
+        height: 38
       alignment: 9
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.4868}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8c2be4a09c85dca30800000000000000
-      internalID: 4237140444910105288
+      spriteID: 0d7686cdbfcd2e0438fab59074d8acf4
+      internalID: -1592652485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: _Block-export_1
+      rect:
+        serializedVersion: 2
+        x: 94
+        y: 0
+        width: 22
+        height: 38
+      alignment: 9
+      pivot: {x: 0.5, y: 0.4868}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f1d306a16ce76704ba882b5b4162814b
+      internalID: 1265097382
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: _Block-export_2
+      rect:
+        serializedVersion: 2
+        x: 142
+        y: 0
+        width: 24
+        height: 38
+      alignment: 9
+      pivot: {x: 0.5, y: 0.4868}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5807c1b01a69bc54db8389a269d65846
+      internalID: 1597265967
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: _Block-export_3
+      rect:
+        serializedVersion: 2
+        x: 190
+        y: 0
+        width: 36
+        height: 38
+      alignment: 9
+      pivot: {x: 0.5, y: 0.4868}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f802926d00e4eee4f8256e1be4e383bf
+      internalID: -453759866
       vertices: []
       indices: 
       edges: []
@@ -125,7 +188,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 887b78912ab9c004ca7aaa280a501ab5
+    spriteID: 3646112e97ac0374e94e94998522ca0d
     internalID: 0
     vertices: []
     indices: 
@@ -133,11 +196,12 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries:
-      - key: SpriteEditor.SliceSettings
-        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":120.0,"y":80.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
+      entries: []
     nameFileIdTable:
-      _Hit_0: 4237140444910105288
+      _Block-export_0: -1592652485
+      _Block-export_1: 1265097382
+      _Block-export_2: 1597265967
+      _Block-export_3: -453759866
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

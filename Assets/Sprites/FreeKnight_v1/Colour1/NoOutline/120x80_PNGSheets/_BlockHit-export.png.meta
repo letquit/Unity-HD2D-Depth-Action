@@ -1,10 +1,7 @@
 fileFormatVersion: 2
-guid: 7943007a78203e844ac04c4c9d091d85
+guid: 932bb1f4ee6005943a071aba59617f97
 TextureImporter:
-  internalIDToNameTable:
-  - first:
-      213: 4237140444910105288
-    second: _Hit_0
+  internalIDToNameTable: []
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -42,7 +39,7 @@ TextureImporter:
     mipBias: 0
     wrapU: 1
     wrapV: 1
-    wrapW: 1
+    wrapW: 0
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
@@ -100,23 +97,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: _Hit_0
+      name: _BlockHit-export_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 37
         y: 0
-        width: 120
-        height: 80
+        width: 58
+        height: 39
       alignment: 9
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.474}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8c2be4a09c85dca30800000000000000
-      internalID: 4237140444910105288
+      spriteID: bcab03e2465686545a4f206edc30954e
+      internalID: -1264608305
       vertices: []
       indices: 
       edges: []
@@ -125,7 +122,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 887b78912ab9c004ca7aaa280a501ab5
+    spriteID: 064b130fdb35fee489b6ab3dfd0e3081
     internalID: 0
     vertices: []
     indices: 
@@ -133,11 +130,9 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries:
-      - key: SpriteEditor.SliceSettings
-        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":120.0,"y":80.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
+      entries: []
     nameFileIdTable:
-      _Hit_0: 4237140444910105288
+      _BlockHit-export_0: -1264608305
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

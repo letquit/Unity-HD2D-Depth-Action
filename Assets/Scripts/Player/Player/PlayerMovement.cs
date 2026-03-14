@@ -55,6 +55,7 @@ public class PlayerMovement : MonoBehaviour
     private bool hasEnteredChargeAnim = false;
 
     private InputAction attackAction;
+    private InputAction blockAction;
 
     public enum ChargeLevel
     {
@@ -77,6 +78,8 @@ public class PlayerMovement : MonoBehaviour
         chargeBar.gameObject.SetActive(false);
 
         attackAction = playerInput.actions["Attack"];
+        blockAction = playerInput.actions["Block"]; 
+        
         attackAction.started += OnAttackStarted;
         attackAction.canceled += OnAttackCanceled;
     }
@@ -103,7 +106,13 @@ public class PlayerMovement : MonoBehaviour
             {
                 isAutoReleased = true;
                 ForceReleaseChargeAttack();
-                return; // 提前返回，避免后续逻辑干扰
+                return;
+            }
+            
+            if (chargeTimer >= 3.0f && blockAction != null && blockAction.WasPerformedThisFrame())
+            {
+                ReleaseChargeAttackByRightClick();
+                return;
             }
             
             if (chargeTimer >= 0.1f)
@@ -201,6 +210,27 @@ public class PlayerMovement : MonoBehaviour
         else
         {
             return 0.69f + (time - 3.0f) * 0.155f;
+        }
+    }
+    
+    private void ReleaseChargeAttackByRightClick()
+    {
+        if (chargeTimer < 3.0f || chargeTimer > maxChargeTime) return;
+    
+        isCharging = false;
+    
+        ChargeLevel finalLevel = GetChargeLevel(chargeTimer);
+    
+        animator.SetTrigger(CharacterAnimations.ChargeAttack);
+        isAttacking = true;
+    
+        Debug.Log("Charge Attack Released by Right Click");
+    
+        if (chargeBar != null)
+        {
+            chargeBarFrame.SetActive(false);
+            chargeBar.gameObject.SetActive(false);
+            isChargeBarVisible = false;
         }
     }
     
