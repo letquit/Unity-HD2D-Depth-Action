@@ -229,12 +229,24 @@ public class PlayerMovement : MonoBehaviour
     private void StopBlocking()
     {
         isBlocking = false;
-        
+    
         animator.SetBool(CharacterAnimations.IsBlocking, false);
-        animator.SetFloat(CharacterAnimations.Speed, 0f);
-        moveInput = Vector2.zero;
-        
+    
         blockResultText.text = "";
+    
+        if (moveInput.magnitude > 0.01f)
+        {
+            animator.SetFloat(CharacterAnimations.Speed, moveInput.magnitude);
+        
+            if (spriteTransform != null && moveInput.x != 0)
+            {
+                spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
+            }
+        }
+        else
+        {
+            animator.SetFloat(CharacterAnimations.Speed, 0f);
+        }
     }
 
     // Test
@@ -268,6 +280,11 @@ public class PlayerMovement : MonoBehaviour
     
     private void ProcessEnemyAttack()
     {
+        if (isDashing)
+        {
+            return;
+        }
+        
         if (isBlocking)
         {
             float timeSinceBlockStart = Time.time - blockStartTime;
@@ -323,6 +340,11 @@ public class PlayerMovement : MonoBehaviour
 
     private void TakeDamage(int damage, float knockbackDistance)
     {
+        if (isDashing)
+        {
+            return;
+        }
+        
         playerData.HP -= damage;
         Debug.Log($"HP: {playerData.HP}/{playerData.maxHP}");
         
@@ -616,6 +638,7 @@ public class PlayerMovement : MonoBehaviour
         if (value.isPressed && !isDashing)
         {
             animator.SetTrigger(CharacterAnimations.Dash);
+            animator.SetBool(CharacterAnimations.IsDashing, true);
 
             if (moveInput.magnitude != 0)
                 dashDirection = new Vector3(moveInput.x, 0, moveInput.y).normalized;
@@ -745,6 +768,7 @@ public class PlayerMovement : MonoBehaviour
                 if (dashTimer <= 0f)
                 {
                     isDashing = false;
+                    animator.SetBool(CharacterAnimations.IsDashing, false);
                     rb.linearVelocity = new Vector3(moveInput.x * moveSpeed, rb.linearVelocity.y, moveInput.y * moveSpeed);
                 }
             }
