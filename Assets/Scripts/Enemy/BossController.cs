@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class BossController : MonoBehaviour
 {
@@ -19,13 +20,22 @@ public class BossController : MonoBehaviour
     private bool isAttacking = false;
     private bool isDead = false;
     private float lastAttackTime = 0f;
+    
+    [Header("Debug")]
+    private EnemyHealth enemyHealth;
+    private Vector3 spawnPos;
+    private Quaternion spawnRot;
 
     private void Start()
     {
         isDead = false;
         isAttacking = false;
         isPlayerInRange = false;
-
+        
+        enemyHealth = GetComponent<EnemyHealth>();
+        spawnPos = transform.position;
+        spawnRot = transform.rotation;
+        
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (detectionZone == null) detectionZone = GetComponent<SphereCollider>();
         if (meleeHitbox == null) meleeHitbox = GetComponentInChildren<MeleeHitbox>();
@@ -47,6 +57,11 @@ public class BossController : MonoBehaviour
 
     private void Update()
     {
+        if (isDead && Keyboard.current != null && Keyboard.current.digit2Key.wasPressedThisFrame)
+        {
+            ReviveBossDebug();
+            return;
+        }
         if (isDead) return;
 
         UpdatePlayerInRange();
@@ -56,6 +71,31 @@ public class BossController : MonoBehaviour
 
         if (isPlayerInRange && !isAttacking && Time.time >= lastAttackTime + attackCooldown)
             StartAttack();
+    }
+    
+    private void ReviveBossDebug()
+    {
+        isDead = false;
+        isAttacking = false;
+        isPlayerInRange = false;
+        lastAttackTime = Time.time;
+
+        transform.position = spawnPos;
+        transform.rotation = spawnRot;
+
+        if (detectionZone != null) detectionZone.enabled = true;
+        if (meleeHitbox != null) meleeHitbox.ForceReset();
+
+        if (enemyHealth != null) enemyHealth.ResetToFull();
+
+        if (animator != null)
+        {
+            animator.ResetTrigger("BossStartDie");
+            animator.ResetTrigger("BossAttack");
+            animator.Play("Boss1_Idle", 0, 0f);
+        }
+
+        gameObject.SetActive(true);
     }
     
     public bool IsPlayerDead()
@@ -164,8 +204,8 @@ public class BossController : MonoBehaviour
 
     public void BossIsDead()
     {
-        var healthBar = GetComponent<EnemyHealth>()?.GetComponentInChildren<HealthBar>();
-        if (healthBar != null) Destroy(healthBar.gameObject);
-        Destroy(gameObject);
+        // var healthBar = GetComponent<EnemyHealth>()?.GetComponentInChildren<HealthBar>();
+        // if (healthBar != null) Destroy(healthBar.gameObject);
+        // Destroy(gameObject);
     }
 }

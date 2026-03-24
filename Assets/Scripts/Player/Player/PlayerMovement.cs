@@ -68,12 +68,13 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float staminaLossBlockFailPercent = 0.3f;
     [Tooltip("未格挡回复耐力百分比")]
     [SerializeField] private float staminaAddNoBlockPercent = 0.3f;
-    [Tooltip("单点弹反时间阈值")]
-    [SerializeField] private float blockTapThreshold = 0.2f;
     
     [Header("blockMsgShowTime")]
     [SerializeField] private float blockMsgDuration = 0.8f;
     private float blockMsgUntil = 0f;
+    
+    [Header("Combat Assist")]
+    public bool enableAutoAimAttackToBoss = false;
     
     private bool blockPressDenied = false;
     private float blockPressStartTime = 0f;
@@ -780,10 +781,26 @@ public class PlayerMovement : MonoBehaviour
     
         HideChargeUI();
     }
+    
+    private void AutoAimToBossOnAttack()
+    {
+        if (!enableAutoAimAttackToBoss) return;
+        if (spriteTransform == null) return;
+
+        GameObject boss = GameObject.FindGameObjectWithTag("Boss");
+        if (boss == null) return;
+
+        float dx = boss.transform.position.x - transform.position.x;
+        if (Mathf.Abs(dx) < 0.01f) return;
+
+        spriteTransform.rotation = Quaternion.Euler(0f, dx > 0f ? 0f : 180f, 0f);
+    }
 
     private void OnAttackStarted(InputAction.CallbackContext ctx)
     {
         if (isDead || isAttacking || isDashing || isBeingHit) return;
+        
+        AutoAimToBossOnAttack();
 
         if (currentStamina < staminaCostAttack) return;
 

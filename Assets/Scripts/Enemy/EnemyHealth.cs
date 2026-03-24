@@ -39,4 +39,14 @@ public class EnemyHealth : MonoBehaviour
         }
         Debug.Log($"{name} Die");
     }
+    
+    public void ResetToFull()
+    {
+        currentHealth = maxHealth;
+        if (healthBar)
+        {
+            healthBar.SetMaxHealth(maxHealth);
+            healthBar.SetHealth(currentHealth);
+        }
+    }
 }

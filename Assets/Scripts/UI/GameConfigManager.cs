@@ -23,6 +23,8 @@ public class GameConfigData
     public float blockFailureKnockback = 2f;
     public float hitKnockback = 4f;
     public float knockbackForce = 2f;
+    
+    public float autoAimAttackToBoss = 0f;
 }
 
 public class GameConfigManager : MonoBehaviour
@@ -43,6 +45,8 @@ public class GameConfigManager : MonoBehaviour
     public TMP_InputField blockFailureKnockbackInput;
     public TMP_InputField hitKnockbackInput;
     public TMP_InputField knockbackForceInput;
+    
+    public TMP_InputField autoAimAttackToBossInput;
     
     public UnityEngine.UI.Button applyAndSaveButton;
     
@@ -187,6 +191,8 @@ public class GameConfigManager : MonoBehaviour
         currentConfig.blockFailureKnockback = playerMovement.blockFailureKnockback;
         currentConfig.hitKnockback = playerMovement.hitKnockback;
         currentConfig.knockbackForce = playerMovement.knockbackForce;
+        
+        currentConfig.autoAimAttackToBoss = playerMovement.enableAutoAimAttackToBoss ? 1f : 0f;
     }
     
     private void ApplyToPlayerMovement()
@@ -207,6 +213,8 @@ public class GameConfigManager : MonoBehaviour
         playerMovement.blockFailureKnockback = currentConfig.blockFailureKnockback;
         playerMovement.hitKnockback = currentConfig.hitKnockback;
         playerMovement.knockbackForce = currentConfig.knockbackForce;
+        
+        playerMovement.enableAutoAimAttackToBoss = currentConfig.autoAimAttackToBoss >= 0.5f;
         
         if (playerMovement.playerData != null)
         {
@@ -232,6 +240,8 @@ public class GameConfigManager : MonoBehaviour
         SetInput(blockFailureKnockbackInput, currentConfig.blockFailureKnockback);
         SetInput(hitKnockbackInput, currentConfig.hitKnockback);
         SetInput(knockbackForceInput, currentConfig.knockbackForce);
+        
+        SetInput(autoAimAttackToBossInput, currentConfig.autoAimAttackToBoss);
     }
     
     private bool SyncFromUI()
@@ -251,6 +261,8 @@ public class GameConfigManager : MonoBehaviour
         valid &= TryParseInput(blockFailureKnockbackInput, ref currentConfig.blockFailureKnockback, "blockFailureKnockback");
         valid &= TryParseInput(hitKnockbackInput, ref currentConfig.hitKnockback, "hitKnockback");
         valid &= TryParseInput(knockbackForceInput, ref currentConfig.knockbackForce, "knockbackForce");
+        valid &= TryParseInput(autoAimAttackToBossInput, ref currentConfig.autoAimAttackToBoss, "autoAimAttackToBoss");
+        currentConfig.autoAimAttackToBoss = currentConfig.autoAimAttackToBoss >= 0.5f ? 1f : 0f;
         return valid;
     }
     
