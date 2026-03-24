@@ -805,7 +805,7 @@ MonoBehaviour:
   staminaCostBlocking: 0.15
   staminaCostDash: 0.25
   staminaCostAttack: 0.15
-  smoothStaminaBar: 1
+  smoothStaminaBar: 0
   staminaBarSmoothSpeed: 8
   playerStaminaBar: {fileID: 2065851327}
   staminaCostBlockTap: 0.1

@@ -59,8 +59,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float staminaCostBlocking = 0.15f;
     [SerializeField] private float staminaCostDash = 0.25f;
     [SerializeField] private float staminaCostAttack = 0.15f;
-    [SerializeField] private bool smoothStaminaBar = true;
-    [SerializeField] private float staminaBarSmoothSpeed = 8f;
     [SerializeField] private Image playerStaminaBar;
     [Tooltip("单点弹反耐力")]
     [SerializeField] private float staminaCostBlockTap = 0.1f;
@@ -73,11 +71,14 @@ public class PlayerMovement : MonoBehaviour
     [Tooltip("单点弹反时间阈值")]
     [SerializeField] private float blockTapThreshold = 0.2f;
     
+    [Header("blockMsgShowTime")]
+    [SerializeField] private float blockMsgDuration = 0.8f;
+    private float blockMsgUntil = 0f;
+    
     private bool blockPressDenied = false;
     private float blockPressStartTime = 0f;
     
     private float currentStamina;
-    private float currentStaminaBarFill = 1f;
     private bool runExhaustedLock = false;
     private bool blockExhaustedLock = false;
 
@@ -158,7 +159,6 @@ public class PlayerMovement : MonoBehaviour
         if (playerStaminaBar != null)
         {
             playerStaminaBar.fillAmount = 1f;
-            currentStaminaBarFill = 1f;
             playerStaminaBar.type = Image.Type.Filled;
             playerStaminaBar.fillMethod = Image.FillMethod.Horizontal;
             playerStaminaBar.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -300,6 +300,22 @@ public class PlayerMovement : MonoBehaviour
         }
         
         HandleBlockInput();
+        
+        if (isBlocking)
+        {
+            blockResultText.text = "正在格挡";
+        }
+        else if (blockResultText != null && !string.IsNullOrEmpty(blockResultText.text) && Time.time >= blockMsgUntil)
+        {
+            blockResultText.text = "";
+        }
+    }
+    
+    private void ShowBlockMsg(string msg)
+    {
+        if (blockResultText == null) return;
+        blockResultText.text = msg;
+        blockMsgUntil = Time.time + blockMsgDuration;
     }
     
     private void HandleSprintInput()
@@ -401,7 +417,7 @@ public class PlayerMovement : MonoBehaviour
             if (currentStamina < minNeeded)
             {
                 blockPressDenied = true;
-                blockResultText.text = "耐力不足";
+                ShowBlockMsg("耐力不足");
                 return;
             }
         }
@@ -412,14 +428,14 @@ public class PlayerMovement : MonoBehaviour
 
             if (isBlocking)
             {
-                float blockDuration = Time.time - blockPressStartTime;
-                if (blockDuration < blockTapThreshold && blockDuration > 0.05f)
-                {
-                    if (ConsumeStaminaInstant(staminaCostBlockTap))
-                        Debug.Log($"[Block] Tap block SUCCESS! Cost: {staminaCostBlockTap}");
-                    else
-                        Debug.Log("[Block] Tap block FAILED: Not enough stamina!");
-                }
+                // float blockDuration = Time.time - blockPressStartTime;
+                // if (blockDuration < blockTapThreshold && blockDuration > 0.05f)
+                // {
+                //     if (ConsumeStaminaInstant(staminaCostBlockTap))
+                //         Debug.Log($"[Block] Tap block SUCCESS! Cost: {staminaCostBlockTap}");
+                //     else
+                //         Debug.Log("[Block] Tap block FAILED: Not enough stamina!");
+                // }
                 StopBlocking();
             }
 
@@ -449,8 +465,6 @@ public class PlayerMovement : MonoBehaviour
         animator.SetBool(CharacterAnimations.IsBlocking, true);
         
         animator.SetTrigger(CharacterAnimations.StartBlock);
-        
-        blockResultText.text = "开始格挡";
     }
 
     private void StopBlocking()
@@ -458,8 +472,6 @@ public class PlayerMovement : MonoBehaviour
         isBlocking = false;
     
         animator.SetBool(CharacterAnimations.IsBlocking, false);
-    
-        blockResultText.text = "";
     
         if (moveInput.magnitude > 0.01f)
         {
@@ -483,9 +495,9 @@ public class PlayerMovement : MonoBehaviour
 
     public void OnBossAttackHitboxExit()
     {
-        if (isBlocking && blockResultText.text == "开始格挡")
+        if (isBlocking && blockResultText.text == "正在格挡")
         {
-            blockResultText.text = "格挡成功";
+            ShowBlockMsg("格挡成功");
         }
     }
     
@@ -511,13 +523,13 @@ public class PlayerMovement : MonoBehaviour
                 if (ConsumeStaminaInstant(staminaCostPerfectBlock))
                 {
                     animator.SetTrigger(CharacterAnimations.BlockSuccess);
-                    blockResultText.text = "完美格挡";
+                    ShowBlockMsg("完美格挡");
                     Debug.Log($"[Perfect Block] Stamina: {currentStamina:F2}");
                 }
                 else
                 {
                     Debug.Log("[Perfect Block] FAILED: Not enough stamina!");
-                    blockResultText.text = "耐力不足\n降为普通格挡";
+                    ShowBlockMsg("耐力不足\n降为普通格挡");
                 
                     float staminaNotEnoughLoss = maxStamina * staminaLossBlockFailPercent;
                     currentStamina = Mathf.Max(0f, currentStamina - staminaNotEnoughLoss);
@@ -531,7 +543,7 @@ public class PlayerMovement : MonoBehaviour
 
         
             Debug.Log("Block Success");
-            blockResultText.text = "普通格挡";
+            ShowBlockMsg("普通格挡");
             
             float staminaLoss = maxStamina * staminaLossBlockFailPercent;
             currentStamina = Mathf.Max(0f, currentStamina - staminaLoss);
@@ -586,26 +598,9 @@ public class PlayerMovement : MonoBehaviour
     private void UpdateStaminaBar()
     {
         if (playerStaminaBar == null) return;
-    
+
         float targetFill = Mathf.Clamp01(currentStamina / maxStamina);
-    
-        if (smoothStaminaBar)
-        {
-            currentStaminaBarFill = Mathf.MoveTowards(currentStaminaBarFill, targetFill, 
-                staminaBarSmoothSpeed * Time.deltaTime);
-            playerStaminaBar.fillAmount = currentStaminaBarFill;
-        
-            if (Mathf.Abs(currentStaminaBarFill - targetFill) < 0.001f)
-            {
-                currentStaminaBarFill = targetFill;
-                playerStaminaBar.fillAmount = targetFill;
-            }
-        }
-        else
-        {
-            playerStaminaBar.fillAmount = targetFill;
-            currentStaminaBarFill = targetFill;
-        }
+        playerStaminaBar.fillAmount = targetFill;
     }
 
     private bool ConsumeStamina(float amount)
