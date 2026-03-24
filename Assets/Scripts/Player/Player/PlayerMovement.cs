@@ -12,6 +12,9 @@ public class PlayerMovement : MonoBehaviour
     public float dashSpeed = 20f;
     public float dashDuration = 0.2f;
     public float dashCooldown = 1f;
+    public float runSpeedMultiplier = 2f;
+    public float dashPressThreshold = 0.2f;
+    public bool canTurnWhileRunning = true;
 
     [Header("Ground Check")]
     public Transform groundCheckPoint;
@@ -55,6 +58,9 @@ public class PlayerMovement : MonoBehaviour
     private bool isAttacking = false;
 
     private bool isDashing = false;
+    private bool isRunning = false;
+    private float shiftPressStartTime = 0f;
+    private InputAction sprintAction;
     private float dashTimer = 0f;
     private float dashCooldownTimer = 0f;
     private Vector3 dashDirection = Vector3.zero;
@@ -103,6 +109,7 @@ public class PlayerMovement : MonoBehaviour
         
         attackAction = playerInput.actions["Attack"];
         blockAction = playerInput.actions["Block"]; 
+        sprintAction = playerInput.actions["Dash"];
         
         attackAction.started += OnAttackStarted;
         attackAction.canceled += OnAttackCanceled;
@@ -125,6 +132,8 @@ public class PlayerMovement : MonoBehaviour
     private void Update()
     {
         if (isDead) return;
+        
+        HandleSprintInput();
 
         // Test
         UpdateEnemyAttackTimerDisplay();
@@ -195,6 +204,83 @@ public class PlayerMovement : MonoBehaviour
         }
         
         HandleBlockInput();
+    }
+    
+    private void HandleSprintInput()
+    {
+        if (isDead || isAttacking || isBlocking || isCharging || isBeingHit) return;
+        if (sprintAction == null) return;
+
+        if (sprintAction.WasPressedThisFrame())
+        {
+            shiftPressStartTime = Time.time;
+        }
+
+        if (sprintAction.IsPressed() && !isRunning && !isDashing && moveInput.magnitude > 0.01f)
+        {
+            float held = Time.time - shiftPressStartTime;
+            if (held >= dashPressThreshold)
+            {
+                StartRunning();
+            }
+        }
+
+        if (sprintAction.WasReleasedThisFrame())
+        {
+            float held = Time.time - shiftPressStartTime;
+
+            if (isRunning)
+            {
+                StopRunning();
+            }
+            else
+            {
+                if (held < dashPressThreshold || moveInput.magnitude <= 0.01f)
+                {
+                    TryStartDash();
+                }
+            }
+
+            shiftPressStartTime = 0f;
+        }
+
+        if (isRunning && (!sprintAction.IsPressed() || moveInput.magnitude < 0.01f))
+        {
+            StopRunning();
+        }
+    }
+    
+    private void StartRunning()
+    {
+        if (isRunning || isDashing) return;
+    
+        isRunning = true;
+    }
+
+    private void StopRunning()
+    {
+        if (!isRunning) return;
+    
+        isRunning = false;
+    }
+
+    private void TryStartDash()
+    {
+        if (isDead || isAttacking || isBlocking || isCharging || isBeingHit) return;
+        if (isRunning) StopRunning();
+        if (dashCooldownTimer > 0f) return;
+    
+        animator.SetTrigger(CharacterAnimations.Dash);
+        animator.SetBool(CharacterAnimations.IsDashing, true);
+    
+        if (moveInput.magnitude != 0)
+            dashDirection = new Vector3(moveInput.x, 0, moveInput.y).normalized;
+        else
+            dashDirection = new Vector3(lastMoveDirection.x, 0, lastMoveDirection.y).normalized;
+    
+        isDashing = true;
+        dashTimer = dashDuration;
+        dashCooldownTimer = dashCooldown;
     }
     
     private void HandleBlockInput()
@@ -298,6 +384,9 @@ public class PlayerMovement : MonoBehaviour
             else
             {
                 Debug.Log("Block Failed");
+                
+                StopBlocking();
+                
                 animator.SetTrigger(CharacterAnimations.BlockFailure);
                 TakeDamage(10, blockFailureKnockback);
             }
@@ -314,27 +403,7 @@ public class PlayerMovement : MonoBehaviour
                 return;
             }
             
-            if (isCharging)
-            {
-                isCharging = false;
-                hasEnteredChargeAnim = false;
-                
-                if (chargeBar != null)
-                {
-                    chargeBarFrame.SetActive(false);
-                    chargeBar.gameObject.SetActive(false);
-                    isChargeBarVisible = false;
-                }
-            }
-        
-            animator.SetTrigger(CharacterAnimations.Hit);
-        
-            isBeingHit = true;
-            knockbackTimer = knockbackDuration;
-        
-            float rotationY = spriteTransform.rotation.eulerAngles.y;
-            bool isFacingLeft = rotationY > 90f && rotationY < 270f;
-            knockbackDirection = (isFacingLeft ? Vector3.right : Vector3.left) * hitKnockback;
+            EnterHitState(hitKnockback);
         }
     }
 
@@ -477,6 +546,7 @@ public class PlayerMovement : MonoBehaviour
     private void OnAttackCanceled(InputAction.CallbackContext ctx)
     {
         if (isDead || isAttacking) return;
+        if (isBeingHit) return;
         if (!isCharging) return;
         
         if (isAutoReleased) return;
@@ -521,6 +591,11 @@ public class PlayerMovement : MonoBehaviour
         if (moveInput.magnitude > 0.01f)
         {
             lastMoveDirection = moveInput;
+        }
+        
+        if (isRunning && canTurnWhileRunning && spriteTransform != null && moveInput.x != 0)
+        {
+            spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
         }
         
         if (isBlocking)
@@ -583,6 +658,42 @@ public class PlayerMovement : MonoBehaviour
         }
     }
     
+    private void EnterHitState(float knockbackDistance)
+    {
+        isCharging = false;
+        isAttacking = false;
+        isBlocking = false;
+        hasEnteredChargeAnim = false;
+        
+        isRunning = false;
+        shiftPressStartTime = 0f;
+
+        animator.SetBool(CharacterAnimations.IsBlocking, false);
+
+        animator.ResetTrigger(CharacterAnimations.Attack);
+        animator.ResetTrigger(CharacterAnimations.ChargeAttack);
+        animator.ResetTrigger(CharacterAnimations.StartCharge);
+        animator.ResetTrigger(CharacterAnimations.BlockSuccess);
+        animator.ResetTrigger(CharacterAnimations.BlockFailure);
+
+        if (chargeBar != null)
+        {
+            chargeBarFrame.SetActive(false);
+            chargeBar.gameObject.SetActive(false);
+            isChargeBarVisible = false;
+        }
+        blockResultText.text = "";
+
+        isBeingHit = true;
+        knockbackTimer = knockbackDuration;
+
+        float rotationY = spriteTransform.rotation.eulerAngles.y;
+        bool isFacingLeft = rotationY > 90f && rotationY < 270f;
+        knockbackDirection = (isFacingLeft ? Vector3.right : Vector3.left) * knockbackDistance;
+
+        animator.SetTrigger(CharacterAnimations.Hit);
+    }
+    
     public void OnBlockEnd()
     {
         if (isDead) return;
@@ -604,6 +715,8 @@ public class PlayerMovement : MonoBehaviour
         isBeingHit = false;
         knockbackTimer = 0f;
         rb.linearVelocity = Vector3.zero;
+        
+        animator.SetFloat(CharacterAnimations.Speed, moveInput.magnitude);
         
         if (isBlocking)
         {
@@ -632,23 +745,6 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnDash(InputValue value)
     {
-        if (isDead || isAttacking || isBlocking || isCharging) return;
-        if (dashCooldownTimer > 0f) return;
-
-        if (value.isPressed && !isDashing)
-        {
-            animator.SetTrigger(CharacterAnimations.Dash);
-            animator.SetBool(CharacterAnimations.IsDashing, true);
-
-            if (moveInput.magnitude != 0)
-                dashDirection = new Vector3(moveInput.x, 0, moveInput.y).normalized;
-            else
-                dashDirection = new Vector3(lastMoveDirection.x, 0, lastMoveDirection.y).normalized;
-
-            isDashing = true;
-            dashTimer = dashDuration;
-            dashCooldownTimer = dashCooldown;
-        }
     }
 
     private void OnDie(InputValue value)
@@ -680,6 +776,9 @@ public class PlayerMovement : MonoBehaviour
         lastChargeLevel = -1;
         isAutoReleased = false;
         knockbackTimer = 0f;
+        
+        isRunning = false;
+        shiftPressStartTime = 0f;
         
         isChargeBarVisible = false;
         if (chargeBar != null)
@@ -731,6 +830,8 @@ public class PlayerMovement : MonoBehaviour
                 {
                     isBeingHit = false;
                     rb.linearVelocity = Vector3.zero;
+                    
+                    animator.SetFloat(CharacterAnimations.Speed, moveInput.magnitude);
                 }
                 return;
             }
@@ -774,7 +875,13 @@ public class PlayerMovement : MonoBehaviour
             }
             else
             {
-                rb.linearVelocity = new Vector3(moveInput.x * moveSpeed, rb.linearVelocity.y, moveInput.y * moveSpeed);
+                float currentMoveSpeed = isRunning ? moveSpeed * runSpeedMultiplier : moveSpeed;
+            
+                rb.linearVelocity = new Vector3(
+                    moveInput.x * currentMoveSpeed, 
+                    rb.linearVelocity.y, 
+                    moveInput.y * currentMoveSpeed
+                );
             }
         }
     }
@@ -795,6 +902,9 @@ public class PlayerMovement : MonoBehaviour
         lastChargeLevel = -1;
         isAutoReleased = false;
         knockbackTimer = 0f;
+        
+        isRunning = false;
+        shiftPressStartTime = 0f;
 
         isChargeBarVisible = false;
         if (chargeBar != null)

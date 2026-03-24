@@ -4,14 +4,17 @@ public class EnemyHealth : MonoBehaviour
 {
     [SerializeField] private float maxHealth = 100f;
     [SerializeField] private HealthBar healthBar;
-
+    
     private float currentHealth;
+    private BossController bossController;
 
     private void Awake()
     {
         currentHealth = maxHealth;
         if (healthBar)
             healthBar.SetMaxHealth(maxHealth);
+        
+        bossController = GetComponentInParent<BossController>();
     }
 
     public void TakeDamage(int damage, GameObject instigator)
@@ -30,8 +33,10 @@ public class EnemyHealth : MonoBehaviour
 
     private void Die()
     {
+        if (bossController != null)
+        {
+            bossController.OnBossDie();
+        }
         Debug.Log($"{name} Die");
-        Destroy(healthBar.gameObject);
-        Destroy(gameObject);
     }
 }

@@ -10,12 +10,6 @@ public class MeleeHitbox : MonoBehaviour
     
     private BoxCollider weaponCollider;
 
-    private void Awake()
-    {
-        weaponCollider = GetComponent<BoxCollider>();
-        weaponCollider.enabled = false;
-    }
-
     public void OnAttackStart()
     {
         hitTargets.Clear();
@@ -39,6 +33,5 @@ public class MeleeHitbox : MonoBehaviour
     public void ForceReset()
     {
         hitTargets.Clear();
-        weaponCollider.enabled = false;
     }
 }
