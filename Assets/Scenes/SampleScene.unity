@@ -798,10 +798,8 @@ MonoBehaviour:
   playerHealthBar: {fileID: 116583478}
   smoothHealthBar: 1
   healthBarSmoothSpeed: 5
-  showPerfectBlockRange: 1
-  perfectBlockColor: {r: 0, g: 1, b: 0, a: 1}
   maxStamina: 1
-  staminaRegenRate: 0.3
+  staminaRegenRate: 0.1
   staminaCostRunning: 0.2
   staminaCostJump: 0.12
   staminaCostBlocking: 0.15
@@ -810,6 +808,11 @@ MonoBehaviour:
   smoothStaminaBar: 1
   staminaBarSmoothSpeed: 8
   playerStaminaBar: {fileID: 2065851327}
+  staminaCostBlockTap: 0.1
+  staminaCostPerfectBlock: 0.15
+  staminaLossBlockFailPercent: 0.3
+  staminaAddNoBlockPercent: 0.3
+  blockTapThreshold: 0.2
 --- !u!114 &111150878
 MonoBehaviour:
   m_ObjectHideFlags: 0

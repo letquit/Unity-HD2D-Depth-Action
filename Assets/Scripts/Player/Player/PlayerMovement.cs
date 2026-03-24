@@ -2,6 +2,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviour
@@ -51,7 +52,8 @@ public class PlayerMovement : MonoBehaviour
     
     [Header("Stamina")]
     [SerializeField] private float maxStamina = 1f;
-    [SerializeField] private float staminaRegenRate = 0.3f;
+    [Tooltip("耐力回复速率")]
+    [SerializeField] private float staminaRegenRate = 0.1f;
     [SerializeField] private float staminaCostRunning = 0.2f;
     [SerializeField] private float staminaCostJump = 0.12f;
     [SerializeField] private float staminaCostBlocking = 0.15f;
@@ -60,6 +62,19 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private bool smoothStaminaBar = true;
     [SerializeField] private float staminaBarSmoothSpeed = 8f;
     [SerializeField] private Image playerStaminaBar;
+    [Tooltip("单点弹反耐力")]
+    [SerializeField] private float staminaCostBlockTap = 0.1f;
+    [Tooltip("完美格挡耐力")]
+    [SerializeField] private float staminaCostPerfectBlock = 0.15f;
+    [Tooltip("格挡失败耐力百分比")]
+    [SerializeField] private float staminaLossBlockFailPercent = 0.3f;
+    [Tooltip("未格挡回复耐力百分比")]
+    [SerializeField] private float staminaAddNoBlockPercent = 0.3f;
+    [Tooltip("单点弹反时间阈值")]
+    [SerializeField] private float blockTapThreshold = 0.2f;
+    
+    private bool blockPressDenied = false;
+    private float blockPressStartTime = 0f;
     
     private float currentStamina;
     private float currentStaminaBarFill = 1f;
@@ -101,7 +116,6 @@ public class PlayerMovement : MonoBehaviour
     private float knockbackDuration = 0.3f;
     
     private float bossAttackHitboxEnterTime = -100f;
-    private bool isBossAttacking = false;
 
     private InputAction attackAction;
     private InputAction blockAction;
@@ -173,11 +187,6 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isDead) return;
         
-        // 被攻击时恢复体力
-        // if (!isRunning && !isBlocking && !isDashing && !isAttacking && !isCharging)
-        // {
-        //     RegenStamina(staminaRegenRate * Time.deltaTime);
-        // }
         if (!isRunning && !isBlocking && !isDashing && !isAttacking && !isCharging && !isBeingHit)
         {
             RegenStamina(staminaRegenRate * Time.deltaTime);
@@ -383,16 +392,42 @@ public class PlayerMovement : MonoBehaviour
         if (isDead || isAttacking || isCharging || isDashing || isBeingHit) return;
         if (blockAction == null) return;
 
+        if (blockAction.WasPressedThisFrame())
+        {
+            blockPressStartTime = Time.time;
+            blockPressDenied = false;
+
+            float minNeeded = 0.01f + staminaCostBlockTap;
+            if (currentStamina < minNeeded)
+            {
+                blockPressDenied = true;
+                blockResultText.text = "耐力不足";
+                return;
+            }
+        }
+        
         if (!blockAction.IsPressed())
         {
             blockExhaustedLock = false;
+
             if (isBlocking)
             {
+                float blockDuration = Time.time - blockPressStartTime;
+                if (blockDuration < blockTapThreshold && blockDuration > 0.05f)
+                {
+                    if (ConsumeStaminaInstant(staminaCostBlockTap))
+                        Debug.Log($"[Block] Tap block SUCCESS! Cost: {staminaCostBlockTap}");
+                    else
+                        Debug.Log("[Block] Tap block FAILED: Not enough stamina!");
+                }
                 StopBlocking();
             }
+
+            blockPressDenied = false;
             return;
         }
 
+        if (blockPressDenied) return;
         if (blockExhaustedLock) return; 
 
         if (blockAction.IsPressed() && !isBlocking)
@@ -443,14 +478,11 @@ public class PlayerMovement : MonoBehaviour
     
     public void OnBossAttackHitboxEnter()
     {
-        isBossAttacking = true;
         bossAttackHitboxEnterTime = Time.time;
     }
 
     public void OnBossAttackHitboxExit()
     {
-        isBossAttacking = false;
-    
         if (isBlocking && blockResultText.text == "开始格挡")
         {
             blockResultText.text = "格挡成功";
@@ -466,7 +498,6 @@ public class PlayerMovement : MonoBehaviour
         }
     
         Vector3 bossPosition = FindBossPosition();
-    
         bool isFacingBoss = IsPlayerFacingBoss(bossPosition);
     
         if (isBlocking && isFacingBoss)
@@ -476,19 +507,42 @@ public class PlayerMovement : MonoBehaviour
             if (timeUntilHitboxEnter >= 0f && timeUntilHitboxEnter <= perfectBlockWindow)
             {
                 Debug.Log("PERFECT BLOCK!");
-                animator.SetTrigger(CharacterAnimations.BlockSuccess);
-                blockResultText.text = "完美格挡";
+            
+                if (ConsumeStaminaInstant(staminaCostPerfectBlock))
+                {
+                    animator.SetTrigger(CharacterAnimations.BlockSuccess);
+                    blockResultText.text = "完美格挡";
+                    Debug.Log($"[Perfect Block] Stamina: {currentStamina:F2}");
+                }
+                else
+                {
+                    Debug.Log("[Perfect Block] FAILED: Not enough stamina!");
+                    blockResultText.text = "耐力不足\n降为普通格挡";
+                
+                    float staminaNotEnoughLoss = maxStamina * staminaLossBlockFailPercent;
+                    currentStamina = Mathf.Max(0f, currentStamina - staminaNotEnoughLoss);
+                    UpdateStaminaBar();
+                
+                    animator.SetTrigger(CharacterAnimations.BlockFailure);
+                    TakeDamage(10, blockFailureKnockback, bossPosition);
+                }
                 return;
             }
+
         
             Debug.Log("Block Success");
-            blockResultText.text = "格挡成功";
+            blockResultText.text = "普通格挡";
+            
+            float staminaLoss = maxStamina * staminaLossBlockFailPercent;
+            currentStamina = Mathf.Max(0f, currentStamina - staminaLoss);
+            UpdateStaminaBar();
         
             TakeDamage(10, blockFailureKnockback, bossPosition);
             return;
         }
     
-        Debug.Log(isBlocking && !isFacingBoss ? "Block Failed - Facing wrong direction!" : "HIT!");
+        bool isBackToBoss = !isFacingBoss;
+        Debug.Log(isBackToBoss ? "HIT! (Back to boss)" : "HIT! (No block)");
     
         if (isCharging)
         {
@@ -496,6 +550,10 @@ public class PlayerMovement : MonoBehaviour
             hasEnteredChargeAnim = false;
             HideChargeUI();
         }
+        
+        float staminaGain = maxStamina * staminaAddNoBlockPercent;
+        currentStamina = Mathf.Min(maxStamina, currentStamina + staminaGain);
+        UpdateStaminaBar();
     
         TakeDamage(10, hitKnockback, bossPosition);
     }
@@ -570,15 +628,12 @@ public class PlayerMovement : MonoBehaviour
     private bool ConsumeStaminaInstant(float amount)
     {
         if (currentStamina < amount) return false;
+    
         currentStamina -= amount;
         currentStamina = Mathf.Max(0f, currentStamina);
-
-        if (playerStaminaBar != null)
-        {
-            float target = Mathf.Clamp01(currentStamina / maxStamina);
-            playerStaminaBar.fillAmount = target;
-            currentStaminaBarFill = target;
-        }
+    
+        UpdateStaminaBar();
+    
         return true;
     }
     
@@ -791,43 +846,53 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnMove(InputValue value)
     {
-        if (isDead || isBeingHit) return;
+        if (isDead) return;
 
         moveInput = value.Get<Vector2>();
 
-        animator.SetFloat(CharacterAnimations.Speed, moveInput.magnitude);
-        
-        if (moveInput.magnitude > 0.01f)
+        if (!isBeingHit)
         {
-            lastMoveDirection = moveInput;
-        }
+            animator.SetFloat(CharacterAnimations.Speed, moveInput.magnitude);
         
-        if (isRunning && canTurnWhileRunning && spriteTransform != null && moveInput.x != 0)
-        {
-            spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
-        }
+            if (moveInput.magnitude > 0.01f)
+            {
+                lastMoveDirection = moveInput;
+            }
         
-        if (isBlocking)
-        {
+            if (isRunning && canTurnWhileRunning && spriteTransform != null && moveInput.x != 0)
+            {
+                spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
+            }
+        
+            if (isBlocking)
+            {
+                if (spriteTransform != null && moveInput.x != 0)
+                {
+                    spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
+                }
+                return;
+            }
+        
+            if (isCharging)
+            {
+                if (chargeTimer >= 0.1f && chargeTimer < 0.5f && spriteTransform != null && moveInput.x != 0)
+                {
+                    spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
+                }
+                return;
+            }
+
             if (spriteTransform != null && moveInput.x != 0)
             {
                 spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
             }
-            return;
         }
-        
-        if (isCharging)
+        else
         {
-            if (chargeTimer >= 0.1f && chargeTimer < 0.5f && spriteTransform != null && moveInput.x != 0)
+            if (moveInput.magnitude > 0.01f)
             {
-                spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
+                lastMoveDirection = moveInput;
             }
-            return;
-        }
-
-        if (spriteTransform != null && moveInput.x != 0)
-        {
-            spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
         }
     }
 
@@ -911,6 +976,13 @@ public class PlayerMovement : MonoBehaviour
     
         isBeingHit = true;
         knockbackTimer = knockbackDuration;
+        
+        animator.SetFloat(CharacterAnimations.Speed, 0f);
+    
+        if (isRunning)
+        {
+            StopRunning();
+        }
     
         Vector3 toPlayer = (transform.position - bossPosition).normalized;
     
