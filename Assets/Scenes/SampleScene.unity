@@ -800,6 +800,15 @@ MonoBehaviour:
   playerHealthBar: {fileID: 116583478}
   smoothHealthBar: 1
   healthBarSmoothSpeed: 5
+  maxStamina: 1
+  staminaRegenRate: 0.3
+  staminaCostRunning: 0.2
+  staminaCostBlocking: 0.15
+  staminaCostDash: 0.25
+  staminaCostAttack: 0.15
+  smoothStaminaBar: 1
+  staminaBarSmoothSpeed: 8
+  playerStaminaBar: {fileID: 2065851327}
 --- !u!114 &111150878
 MonoBehaviour:
   m_ObjectHideFlags: 0

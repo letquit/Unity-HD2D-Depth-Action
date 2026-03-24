@@ -50,6 +50,23 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float healthBarSmoothSpeed = 5f;
 
     private float currentHealthBarFill = 1f;
+    
+    [Header("Stamina")]
+    [SerializeField] private float maxStamina = 1f;
+    [SerializeField] private float staminaRegenRate = 0.3f;
+    [SerializeField] private float staminaCostRunning = 0.2f;
+    [SerializeField] private float staminaCostJump = 0.12f;
+    [SerializeField] private float staminaCostBlocking = 0.15f;
+    [SerializeField] private float staminaCostDash = 0.25f;
+    [SerializeField] private float staminaCostAttack = 0.15f;
+    [SerializeField] private bool smoothStaminaBar = true;
+    [SerializeField] private float staminaBarSmoothSpeed = 8f;
+    [SerializeField] private Image playerStaminaBar;
+    
+    private float currentStamina;
+    private float currentStaminaBarFill = 1f;
+    private bool runExhaustedLock = false;
+    private bool blockExhaustedLock = false;
 
     private PlayerInput playerInput;
     private Rigidbody rb;
@@ -123,6 +140,17 @@ public class PlayerMovement : MonoBehaviour
             playerHealthBar.fillOrigin = (int)Image.OriginHorizontal.Left;
         }
         
+        currentStamina = maxStamina;
+    
+        if (playerStaminaBar != null)
+        {
+            playerStaminaBar.fillAmount = 1f;
+            currentStaminaBarFill = 1f;
+            playerStaminaBar.type = Image.Type.Filled;
+            playerStaminaBar.fillMethod = Image.FillMethod.Horizontal;
+            playerStaminaBar.fillOrigin = (int)Image.OriginHorizontal.Left;
+        }
+        
         attackAction = playerInput.actions["Attack"];
         blockAction = playerInput.actions["Block"]; 
         sprintAction = playerInput.actions["Dash"];
@@ -148,6 +176,51 @@ public class PlayerMovement : MonoBehaviour
     private void Update()
     {
         if (isDead) return;
+        
+        // 被攻击时恢复体力
+        // if (!isRunning && !isBlocking && !isDashing && !isAttacking && !isCharging)
+        // {
+        //     RegenStamina(staminaRegenRate * Time.deltaTime);
+        // }
+        if (!isRunning && !isBlocking && !isDashing && !isAttacking && !isCharging && !isBeingHit)
+        {
+            RegenStamina(staminaRegenRate * Time.deltaTime);
+        }
+    
+        if (isRunning)
+        {
+            if (!ConsumeStamina(staminaCostRunning * Time.deltaTime))
+            {
+                StopRunning();
+                runExhaustedLock = true;
+            }
+        }
+    
+        if (isBlocking)
+        {
+            if (!ConsumeStamina(staminaCostBlocking * Time.deltaTime))
+            {
+                StopBlocking();
+                blockExhaustedLock = true;
+            }
+        }
+        
+        if (isCharging)
+        {
+            if (chargeTimer >= 0.1f)
+            {
+                if (!ConsumeStamina(staminaCostAttack * Time.deltaTime))
+                {
+                    isCharging = false;
+                    isAttacking = true;
+                    
+                    animator.SetTrigger(CharacterAnimations.ChargeAttack);
+                    ApplyChargeEffect(GetChargeLevel(chargeTimer));
+                    
+                    HideChargeUI();
+                }
+            }
+        }
         
         if (smoothHealthBar && playerHealthBar != null && 
             Mathf.Abs(currentHealthBarFill - playerData.HP / playerData.maxHP) > 0.001f)
@@ -237,20 +310,12 @@ public class PlayerMovement : MonoBehaviour
         {
             shiftPressStartTime = Time.time;
         }
-
-        if (sprintAction.IsPressed() && !isRunning && !isDashing && moveInput.magnitude > 0.01f)
-        {
-            float held = Time.time - shiftPressStartTime;
-            if (held >= dashPressThreshold)
-            {
-                StartRunning();
-            }
-        }
-
+        
         if (sprintAction.WasReleasedThisFrame())
         {
-            float held = Time.time - shiftPressStartTime;
+            runExhaustedLock = false;
 
+            float held = Time.time - shiftPressStartTime;
             if (isRunning)
             {
                 StopRunning();
@@ -262,8 +327,19 @@ public class PlayerMovement : MonoBehaviour
                     TryStartDash();
                 }
             }
-
             shiftPressStartTime = 0f;
+            return;
+        }
+
+        if (runExhaustedLock) return;
+        
+        if (sprintAction.IsPressed() && !isRunning && !isDashing && moveInput.magnitude > 0.01f)
+        {
+            float held = Time.time - shiftPressStartTime;
+            if (held >= dashPressThreshold)
+            {
+                StartRunning();
+            }
         }
 
         if (isRunning && (!sprintAction.IsPressed() || moveInput.magnitude < 0.01f))
@@ -291,6 +367,11 @@ public class PlayerMovement : MonoBehaviour
         if (isDead || isAttacking || isBlocking || isCharging || isBeingHit) return;
         if (isRunning) StopRunning();
         if (dashCooldownTimer > 0f) return;
+        
+        if (!ConsumeStaminaInstant(staminaCostDash))
+        {
+            return;
+        }
     
         animator.SetTrigger(CharacterAnimations.Dash);
         animator.SetBool(CharacterAnimations.IsDashing, true);
@@ -308,22 +389,33 @@ public class PlayerMovement : MonoBehaviour
     private void HandleBlockInput()
     {
         if (isDead || isAttacking || isCharging || isDashing || isBeingHit) return;
-        
-        if (blockAction != null)
+        if (blockAction == null) return;
+
+        if (!blockAction.IsPressed())
         {
-            if (blockAction.IsPressed() && !isBlocking)
-            {
-                StartBlocking();
-            }
-            else if (!blockAction.IsPressed() && isBlocking)
+            blockExhaustedLock = false;
+            if (isBlocking)
             {
                 StopBlocking();
             }
+            return;
+        }
+
+        if (blockExhaustedLock) return; 
+
+        if (blockAction.IsPressed() && !isBlocking)
+        {
+            StartBlocking();
         }
     }
 
     private void StartBlocking()
     {
+        if (currentStamina <= 0.01f)
+        {
+            return;
+        }
+        
         isBlocking = true;
         blockStartTime = Time.time;
         
@@ -417,6 +509,75 @@ public class PlayerMovement : MonoBehaviour
         {
             TakeDamage(10, hitKnockback);
         }
+    }
+    
+    private void UpdateStaminaBar()
+    {
+        if (playerStaminaBar == null) return;
+    
+        float targetFill = Mathf.Clamp01(currentStamina / maxStamina);
+    
+        if (smoothStaminaBar)
+        {
+            currentStaminaBarFill = Mathf.MoveTowards(currentStaminaBarFill, targetFill, 
+                staminaBarSmoothSpeed * Time.deltaTime);
+            playerStaminaBar.fillAmount = currentStaminaBarFill;
+        
+            if (Mathf.Abs(currentStaminaBarFill - targetFill) < 0.001f)
+            {
+                currentStaminaBarFill = targetFill;
+                playerStaminaBar.fillAmount = targetFill;
+            }
+        }
+        else
+        {
+            playerStaminaBar.fillAmount = targetFill;
+            currentStaminaBarFill = targetFill;
+        }
+    }
+
+    private bool ConsumeStamina(float amount)
+    {
+        if (currentStamina >= amount)
+        {
+            currentStamina -= amount;
+            UpdateStaminaBar();
+            return true;
+        }
+        return false;
+    }
+
+    private void RegenStamina(float amount)
+    {
+        currentStamina = Mathf.Min(maxStamina, currentStamina + amount);
+        UpdateStaminaBar();
+    }
+    
+    private bool ConsumeStaminaInstant(float amount)
+    {
+        if (currentStamina < amount) return false;
+        currentStamina -= amount;
+        currentStamina = Mathf.Max(0f, currentStamina);
+
+        if (playerStaminaBar != null)
+        {
+            float target = Mathf.Clamp01(currentStamina / maxStamina);
+            playerStaminaBar.fillAmount = target;
+            currentStaminaBarFill = target;
+        }
+        return true;
+    }
+    
+    private void HideChargeUI()
+    {
+        if (chargeBarFrame != null) chargeBarFrame.SetActive(false);
+        if (chargeBar != null)
+        {
+            chargeBar.gameObject.SetActive(false);
+            chargeBar.fillAmount = 0f;
+        }
+        isChargeBarVisible = false;
+        hasEnteredChargeAnim = false;
     }
     
     private void UpdateHealthBar()
@@ -534,12 +695,7 @@ public class PlayerMovement : MonoBehaviour
     
         Debug.Log("Charge Attack Released by Right Click");
     
-        if (chargeBar != null)
-        {
-            chargeBarFrame.SetActive(false);
-            chargeBar.gameObject.SetActive(false);
-            isChargeBarVisible = false;
-        }
+        HideChargeUI();
     }
     
     private void ForceReleaseChargeAttack()
@@ -553,18 +709,14 @@ public class PlayerMovement : MonoBehaviour
     
         ApplyChargeEffect(finalLevel);
     
-        if (chargeBar != null)
-        {
-            chargeBarFrame.SetActive(false);
-            chargeBar.gameObject.SetActive(false);
-            isChargeBarVisible = false;
-        }
+        HideChargeUI();
     }
 
     private void OnAttackStarted(InputAction.CallbackContext ctx)
     {
-        if (isDead || isAttacking) return;
-        if (isDashing) return;
+        if (isDead || isAttacking || isDashing || isBeingHit) return;
+
+        if (currentStamina < staminaCostAttack) return;
 
         isCharging = true;
         chargeTimer = 0f;
@@ -591,16 +743,17 @@ public class PlayerMovement : MonoBehaviour
 
         ChargeLevel finalLevel = GetChargeLevel(chargeTimer);
     
-        if (chargeTimer < 0.1f)
+        if (chargeTimer < 0.5f)
         {
-            animator.SetTrigger(CharacterAnimations.Attack);
-        }
-        else if (chargeTimer < 0.5f)
-        {
+            if (!ConsumeStaminaInstant(staminaCostAttack))
+            {
+                return; 
+            }
             animator.SetTrigger(CharacterAnimations.Attack);
         }
         else
         {
+            if (currentStamina < 0f) currentStamina = 0f;
             animator.SetTrigger(CharacterAnimations.ChargeAttack);
         }
     
@@ -608,12 +761,7 @@ public class PlayerMovement : MonoBehaviour
     
         ApplyChargeEffect(finalLevel);
         
-        if (chargeBar != null)
-        {
-            chargeBarFrame.SetActive(false);
-            chargeBar.gameObject.SetActive(false);
-            isChargeBarVisible = false;
-        }
+        HideChargeUI();
     }
 
     private void OnMove(InputValue value)
@@ -664,6 +812,11 @@ public class PlayerMovement : MonoBehaviour
 
         if (value.isPressed && isGrounded && !isDashing)
         {
+            if (!ConsumeStaminaInstant(staminaCostJump))
+            {
+                return;
+            }
+            
             isGrounded = false;
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, jumpForce, rb.linearVelocity.z);
 
@@ -688,10 +841,7 @@ public class PlayerMovement : MonoBehaviour
             spriteTransform.rotation = Quaternion.Euler(0, moveInput.x > 0 ? 0f : 180f, 0);
         }
         
-        if (chargeBar != null)
-        {
-            chargeBar.fillAmount = 0f;
-        }
+        HideChargeUI();
     }
     
     private void EnterHitState(float knockbackDistance)
@@ -711,6 +861,8 @@ public class PlayerMovement : MonoBehaviour
         animator.ResetTrigger(CharacterAnimations.StartCharge);
         animator.ResetTrigger(CharacterAnimations.BlockSuccess);
         animator.ResetTrigger(CharacterAnimations.BlockFailure);
+        
+        HideChargeUI();
 
         if (chargeBar != null)
         {
@@ -794,6 +946,9 @@ public class PlayerMovement : MonoBehaviour
     {
         isDead = false;
         playerData.HP = playerData.maxHP;
+        
+        currentStamina = maxStamina;
+        UpdateStaminaBar();
 
         UpdateHealthBar(); 
         
@@ -818,13 +973,7 @@ public class PlayerMovement : MonoBehaviour
         isRunning = false;
         shiftPressStartTime = 0f;
         
-        isChargeBarVisible = false;
-        if (chargeBar != null)
-        {
-            chargeBarFrame.SetActive(false);
-            chargeBar.gameObject.SetActive(false);
-            chargeBar.fillAmount = 0f;
-        }
+        HideChargeUI();
 
         rb.linearVelocity = Vector3.zero;
         
@@ -944,14 +1093,7 @@ public class PlayerMovement : MonoBehaviour
         isRunning = false;
         shiftPressStartTime = 0f;
 
-        isChargeBarVisible = false;
-        if (chargeBar != null)
-        {
-            chargeBarFrame.SetActive(false);
-            chargeBar.gameObject.SetActive(false);
-            chargeBar.fillAmount = 0f;
-        }
-        
+        HideChargeUI();
         
         if (animator != null)
         {
