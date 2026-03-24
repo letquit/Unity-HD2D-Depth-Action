@@ -5,10 +5,22 @@ public class EnemyDeath : MonoBehaviour
     private EnemyHealth enemyHealth;
     private BossController bossController;
 
+    [SerializeField] private GameObject VFXObject;
+
     private void Start()
     {
         enemyHealth = GetComponentInParent<EnemyHealth>();
         bossController = GetComponentInParent<BossController>();
+    }
+
+    public void OnAttackBegin()
+    {
+        VFXObject.SetActive(true);
+    }
+
+    public void OnAttackReady()
+    {
+        VFXObject.SetActive(false);
     }
     
     public void OnAttackStart()
