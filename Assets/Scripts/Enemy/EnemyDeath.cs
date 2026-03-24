@@ -38,4 +38,20 @@ public class EnemyDeath : MonoBehaviour
             Destroy(transform.parent.gameObject);
         }
     }
+    
+    public void OnAttackHitboxEnter()
+    {
+        if (bossController != null)
+        {
+            bossController.OnAttackHitboxEnter();
+        }
+    }
+    
+    public void OnAttackHitboxExit()
+    {
+        if (bossController != null)
+        {
+            bossController.OnAttackHitboxExit();
+        }
+    }
 }

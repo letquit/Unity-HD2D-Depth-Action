@@ -182,7 +182,7 @@ public class GameConfigManager : MonoBehaviour
         currentConfig.chargeMoveSpeedMultiplier = playerMovement.chargeMoveSpeedMultiplier;
         currentConfig.playerMaxHp = playerMovement.playerMaxHp;
         currentConfig.blockMoveSpeedMultiplier = playerMovement.blockMoveSpeedMultiplier;
-        currentConfig.enemyAttackInterval = playerMovement.enemyAttackInterval;
+        // currentConfig.enemyAttackInterval = playerMovement.enemyAttackInterval;
         currentConfig.perfectBlockWindow = playerMovement.perfectBlockWindow;
         currentConfig.blockFailureKnockback = playerMovement.blockFailureKnockback;
         currentConfig.hitKnockback = playerMovement.hitKnockback;
@@ -202,7 +202,7 @@ public class GameConfigManager : MonoBehaviour
         playerMovement.chargeMoveSpeedMultiplier = currentConfig.chargeMoveSpeedMultiplier;
         playerMovement.playerMaxHp = currentConfig.playerMaxHp;
         playerMovement.blockMoveSpeedMultiplier = currentConfig.blockMoveSpeedMultiplier;
-        playerMovement.enemyAttackInterval = currentConfig.enemyAttackInterval;
+        // playerMovement.enemyAttackInterval = currentConfig.enemyAttackInterval;
         playerMovement.perfectBlockWindow = currentConfig.perfectBlockWindow;
         playerMovement.blockFailureKnockback = currentConfig.blockFailureKnockback;
         playerMovement.hitKnockback = currentConfig.hitKnockback;

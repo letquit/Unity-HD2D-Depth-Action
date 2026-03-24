@@ -7,10 +7,13 @@ public class BossController : MonoBehaviour
     [SerializeField] private SphereCollider detectionZone;
     [SerializeField] private MeleeHitbox meleeHitbox;
     [SerializeField] private Animator animator;
-    [SerializeField] private Transform bossSprite; // 新增：Boss可视模型(子物体)
+    [SerializeField] private Transform bossSprite;
 
     [Header("Settings")]
     [SerializeField] private float attackCooldown = 2f;
+    
+    [Header("References")]
+    [SerializeField] private PlayerMovement playerMovement; 
 
     private bool isPlayerInRange = false;
     private bool isAttacking = false;
@@ -26,7 +29,7 @@ public class BossController : MonoBehaviour
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (detectionZone == null) detectionZone = GetComponent<SphereCollider>();
         if (meleeHitbox == null) meleeHitbox = GetComponentInChildren<MeleeHitbox>();
-        if (bossSprite == null && animator != null) bossSprite = animator.transform; // 默认用动画子物体
+        if (bossSprite == null && animator != null) bossSprite = animator.transform;
 
         if (player == null)
         {
@@ -54,10 +57,15 @@ public class BossController : MonoBehaviour
         if (isPlayerInRange && !isAttacking && Time.time >= lastAttackTime + attackCooldown)
             StartAttack();
     }
+    
+    public bool IsPlayerDead()
+    {
+        return playerMovement != null && playerMovement.IsDead();
+    }
 
     private void UpdatePlayerInRange()
     {
-        if (player == null || detectionZone == null)
+        if (player == null || detectionZone == null || IsPlayerDead())
         {
             isPlayerInRange = false;
             return;
@@ -78,24 +86,45 @@ public class BossController : MonoBehaviour
         bossSprite.rotation = Quaternion.Euler(0f, deltaX > 0 ? 0f : 180f, 0f);
     }
 
-    private void OnTriggerEnter(Collider other)
+    public bool IsAttacking()
     {
-        if (isDead) return;
-        if (other.gameObject.layer == LayerMask.NameToLayer("Player"))
+        return isAttacking;
+    }
+    
+    public void OnAttackHitboxEnter()
+    {
+        if (playerMovement != null)
         {
-            isPlayerInRange = true;
+            playerMovement.OnBossAttackHitboxEnter();
         }
     }
-
-    private void OnTriggerExit(Collider other)
+    
+    public void OnAttackHitboxExit()
     {
-        if (other.gameObject.layer == LayerMask.NameToLayer("Player"))
+        if (playerMovement != null)
         {
-            isPlayerInRange = false;
-            if (isAttacking) StopAttack();
+            playerMovement.OnBossAttackHitboxExit();
         }
+        
+        if (meleeHitbox != null) meleeHitbox.ForceReset();
     }
 
+    private void OnAttackHitboxEnter(Collider other)
+    {
+        if (!isAttacking)
+        {
+            return;
+        }
+    
+        if (other.gameObject.layer == LayerMask.NameToLayer("Player"))
+        {
+            if (playerMovement != null)
+            {
+                playerMovement.OnBossAttackHit();
+            }
+        }
+    }
+    
     private void StartAttack()
     {
         isAttacking = true;

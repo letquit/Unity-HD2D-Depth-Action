@@ -193,8 +193,15 @@ AnimationClip:
   m_HasGenericRootTransform: 0
   m_HasMotionFloatCurves: 0
   m_Events:
-  - time: 0
+  - time: 0.16666667
     functionName: OnAttackStart
+    data: 
+    objectReferenceParameter: {fileID: 0}
+    floatParameter: 0
+    intParameter: 0
+    messageOptions: 0
+  - time: 0.16666667
+    functionName: OnAttackHitboxEnter
     data: 
     objectReferenceParameter: {fileID: 0}
     floatParameter: 0
@@ -202,6 +209,13 @@ AnimationClip:
     messageOptions: 0
   - time: 0.5
     functionName: OnAttackEnd
+    data: 
+    objectReferenceParameter: {fileID: 0}
+    floatParameter: 0
+    intParameter: 0
+    messageOptions: 0
+  - time: 0.5
+    functionName: OnAttackHitboxExit
     data: 
     objectReferenceParameter: {fileID: 0}
     floatParameter: 0
