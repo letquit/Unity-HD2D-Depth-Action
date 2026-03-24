@@ -43,6 +43,13 @@ public class PlayerMovement : MonoBehaviour
     public float hitKnockback = 4f;
     public float knockbackForce = 10f;
     public PlayerData playerData;
+    
+    [Header("UI")]
+    [SerializeField] private Image playerHealthBar;
+    [SerializeField] private bool smoothHealthBar = false;
+    [SerializeField] private float healthBarSmoothSpeed = 5f;
+
+    private float currentHealthBarFill = 1f;
 
     private PlayerInput playerInput;
     private Rigidbody rb;
@@ -107,6 +114,15 @@ public class PlayerMovement : MonoBehaviour
         playerData.maxHP = playerMaxHp;
         playerData.HP = playerData.maxHP;
         
+        if (playerHealthBar != null)
+        {
+            playerHealthBar.fillAmount = 1f;
+            currentHealthBarFill = 1f;
+            playerHealthBar.type = Image.Type.Filled;
+            playerHealthBar.fillMethod = Image.FillMethod.Horizontal;
+            playerHealthBar.fillOrigin = (int)Image.OriginHorizontal.Left;
+        }
+        
         attackAction = playerInput.actions["Attack"];
         blockAction = playerInput.actions["Block"]; 
         sprintAction = playerInput.actions["Dash"];
@@ -132,6 +148,12 @@ public class PlayerMovement : MonoBehaviour
     private void Update()
     {
         if (isDead) return;
+        
+        if (smoothHealthBar && playerHealthBar != null && 
+            Mathf.Abs(currentHealthBarFill - playerData.HP / playerData.maxHP) > 0.001f)
+        {
+            UpdateHealthBar();
+        }
         
         HandleSprintInput();
 
@@ -393,45 +415,59 @@ public class PlayerMovement : MonoBehaviour
         }
         else
         {
-            int damage = 10;
-            playerData.HP -= damage;
-            
-            if (playerData.HP <= 0)
+            TakeDamage(10, hitKnockback);
+        }
+    }
+    
+    private void UpdateHealthBar()
+    {
+        if (playerHealthBar == null) return;
+    
+        float targetFill = Mathf.Clamp01(playerData.HP / playerData.maxHP);
+    
+        if (smoothHealthBar)
+        {
+            currentHealthBarFill = Mathf.MoveTowards(currentHealthBarFill, targetFill, 
+                healthBarSmoothSpeed * Time.deltaTime);
+            playerHealthBar.fillAmount = currentHealthBarFill;
+        
+            if (Mathf.Abs(currentHealthBarFill - targetFill) < 0.001f)
             {
-                playerData.HP = 0;
-                Die();
-                return;
+                currentHealthBarFill = targetFill;
+                playerHealthBar.fillAmount = targetFill;
             }
-            
-            EnterHitState(hitKnockback);
+        }
+        else
+        {
+            playerHealthBar.fillAmount = targetFill;
+            currentHealthBarFill = targetFill;
         }
     }
 
     private void TakeDamage(int damage, float knockbackDistance)
     {
-        if (isDashing)
-        {
-            return;
-        }
-        
+        if (isDashing) return;
+    
         playerData.HP -= damage;
         Debug.Log($"HP: {playerData.HP}/{playerData.maxHP}");
-        
+    
+        UpdateHealthBar();
+    
         if (playerData.HP <= 0)
         {
             playerData.HP = 0;
+        
+            if (playerHealthBar != null)
+            {
+                playerHealthBar.fillAmount = 0f;
+                currentHealthBarFill = 0f;
+            }
+        
             Die();
             return;
         }
-        
-        isBeingHit = true;
-        knockbackTimer = knockbackDuration;
-        
-        float rotationY = spriteTransform.rotation.eulerAngles.y;
-        bool isFacingLeft = rotationY > 90f && rotationY < 270f;
     
-        knockbackDirection = isFacingLeft ? Vector3.right : Vector3.left;
-        knockbackDirection *= knockbackDistance;
+        EnterHitState(knockbackDistance);
     }
 
     public ChargeLevel GetChargeLevel(float time)
@@ -759,6 +795,8 @@ public class PlayerMovement : MonoBehaviour
         isDead = false;
         playerData.HP = playerData.maxHP;
 
+        UpdateHealthBar(); 
+        
         animator.SetBool(CharacterAnimations.Die, false);
         animator.SetBool(CharacterAnimations.IsJumping, false);
         animator.SetFloat(CharacterAnimations.Speed, 0f);

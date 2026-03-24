@@ -790,13 +790,16 @@ MonoBehaviour:
   chargeMoveSpeedMultiplier: 0.3
   playerMaxHp: 100
   blockMoveSpeedMultiplier: 0.3
-  enemyAttackInterval: 10
+  enemyAttackInterval: 2
   enemyAttackText: {fileID: 171930445}
   blockResultText: {fileID: 1592732080}
   perfectBlockWindow: 0.2
   blockFailureKnockback: 2
   hitKnockback: 4
   knockbackForce: 2
+  playerHealthBar: {fileID: 116583478}
+  smoothHealthBar: 1
+  healthBarSmoothSpeed: 5
 --- !u!114 &111150878
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20566,7 +20569,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -1447639636, guid: 7cd6b456cc8bfe8428d8cedd79c9e0e7, type: 3}
+  m_Sprite: {fileID: 471737819, guid: 61332aa108495644fbee7b13cb588f67, type: 3}
   m_Type: 3
   m_PreserveAspect: 0
   m_FillCenter: 1
